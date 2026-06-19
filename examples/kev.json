@@ -1,0 +1,18 @@
+{
+  "title": "SAMPLE Known Exploited Vulnerabilities Catalog (cveintel example fixture)",
+  "catalogVersion": "sample-2024.01",
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2024-10001",
+      "vendorProject": "Acme",
+      "product": "AcmeWidget",
+      "shortDescription": "SAMPLE: actively exploited unauthenticated RCE"
+    },
+    {
+      "cveID": "CVE-2024-10003",
+      "vendorProject": "Example",
+      "product": "ExampleFileServer",
+      "shortDescription": "SAMPLE: exploited path traversal"
+    }
+  ]
+}

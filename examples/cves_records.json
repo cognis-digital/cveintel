@@ -1,0 +1,26 @@
+[
+  {
+    "cve_id": "CVE-2024-10001",
+    "description": "SAMPLE: unauthenticated RCE in the AcmeWidget admin API"
+  },
+  {
+    "cve_id": "CVE-2024-10002",
+    "description": "SAMPLE: stored XSS in the SampleCMS comment field"
+  },
+  {
+    "cve_id": "CVE-2024-10003",
+    "description": "SAMPLE: path traversal in ExampleFileServer download handler"
+  },
+  {
+    "cve_id": "CVE-2024-10004",
+    "description": "SAMPLE: auth bypass in DemoVPN session validation"
+  },
+  {
+    "cve_id": "CVE-2024-10005",
+    "description": "SAMPLE: info disclosure via verbose error pages in TestApp"
+  },
+  {
+    "cve_id": "CVE-2024-10006",
+    "description": "SAMPLE: low-impact open redirect in PlaceholderPortal login"
+  }
+]
