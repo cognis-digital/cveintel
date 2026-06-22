@@ -125,15 +125,29 @@ def enrich_records(
     fixtures_dir: str,
     live: bool = False,
     live_timeout: float = 20.0,
+    feeds: bool = False,
+    offline: bool = False,
 ) -> list[dict]:
     """Merge CVSS / KEV / EPSS signals onto a list of CVE records.
 
     Existing values already on a record are preserved (the input is treated as
     authoritative); only missing fields are filled from the signal sources.
+
+    Signal source precedence:
+      * ``feeds=True``  -> the edge/air-gap feed cache (:mod:`cveintel.feeds`).
+        With ``offline=True`` it serves cached cisa-kev/epss/nvd-cve only and
+        never touches the network (raises if a feed was never cached).
+      * ``live=True``   -> the legacy isolated :mod:`cveintel.live` fetchers.
+      * otherwise       -> local fixture JSON under ``fixtures_dir``.
     """
     cve_ids = [r["cve_id"] for r in records]
 
-    if live:
+    if feeds:
+        # Edge/air-gap path via the bundled feed engine; offline serves cache.
+        from . import feeds as feeds_mod
+
+        kev_set, epss_map, cvss_map = feeds_mod.signals(cve_ids, offline=offline)
+    elif live:
         # Network path - isolated, never exercised by the offline tests.
         from . import live as live_mod
 

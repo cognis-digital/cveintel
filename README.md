@@ -112,6 +112,64 @@ cveintel rank scan.json --live --live-timeout 30
 
 The network layer is isolated in `cveintel/live.py` and is never used in the offline path or the test suite.
 
+## Data feeds (edge / air-gap deployable)
+
+For disconnected, edge, or air-gapped operation, cveintel ships a small,
+standard-library **data-feed cache** (`cveintel/datafeeds.py` +
+`cveintel/data_feeds_2026.json`) that fetches the three real, authoritative,
+**keyless** public sources it consumes over HTTPS, caches each to disk, and
+re-serves them **offline** so triage keeps working with zero network egress.
+
+The catalog is filtered to exactly the feeds cveintel uses:
+
+| Feed id | Source | URL |
+| ------- | ------ | --- |
+| `cisa-kev` | CISA Known Exploited Vulnerabilities | `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` |
+| `epss` | FIRST EPSS exploit-probability scores | `https://api.first.org/data/v1/epss` |
+| `nvd-cve` | NIST NVD CVE API 2.0 (CVSS base) | `https://services.nvd.nist.gov/rest/json/cves/2.0` |
+
+### The `feeds` subcommand
+
+```bash
+cveintel feeds list                        # the 3 feeds + cache freshness
+cveintel feeds update                      # fetch + cache all three (network)
+cveintel feeds update epss                 # refresh just one
+cveintel feeds get cisa-kev --offline      # print a cached feed, no network
+cveintel feeds snapshot-export feeds.tar.gz   # tar the cache for sneakernet
+cveintel feeds snapshot-import feeds.tar.gz   # rehydrate in an enclave
+```
+
+The cache location is `COGNIS_FEEDS_CACHE` (default `~/.cache/cognis-feeds`).
+
+### Enriching from the cache (offline)
+
+`rank` / `enrich` / `kev` can source signals from the feed cache instead of
+fixtures or the legacy `--live` path:
+
+```bash
+# refresh from network, then enrich:
+cveintel rank scan.json --feeds
+
+# air-gapped: serve every signal from the local cache, no network at all:
+cveintel rank scan.json --feeds --offline
+```
+
+### Air-gap (sneakernet) workflow
+
+```bash
+# On a CONNECTED host:
+cveintel feeds update
+cveintel feeds snapshot-export feeds.tar.gz      # copy this onto a USB drive
+
+# On the AIR-GAPPED host:
+export COGNIS_FEEDS_CACHE=/srv/cveintel/feed-cache
+cveintel feeds snapshot-import feeds.tar.gz
+cveintel rank scan.json --feeds --offline        # full triage, zero egress
+```
+
+See [`demos/11-airgap-feeds-enrichment`](demos/11-airgap-feeds-enrichment/) for
+an end-to-end offline walkthrough backed by a committed trimmed feed cache.
+
 ## Input formats
 
 `<cves.json>` may be any of:
@@ -142,7 +200,7 @@ Point at your own with `--fixtures path/to/dir`. The bundled example data is cle
 
 ## Demos
 
-The [`demos/`](demos/) directory holds ten self-contained, real-use-case scenarios. Each
+The [`demos/`](demos/) directory holds eleven self-contained, real-use-case scenarios. Each
 folder ships a `scan.json` in the tool's real input format, its own `kev.json` / `epss.json`
 / `nvd.json` fixtures, and a `SCENARIO.md` that narrates where the data came from, the exact
 command to run, what to expect, and how to act on it. They are grounded in well-documented,
@@ -162,6 +220,7 @@ values, while EPSS figures are clearly-marked illustrative snapshots in the real
 | [08-bare-cve-ids-baseline](demos/08-bare-cve-ids-baseline/) | Unenriched id list | Fails safe: 0.0 / "no signal", never fabricates severity |
 | [09-mixed-vendor-patch-tuesday](demos/09-mixed-vendor-patch-tuesday/) | Cross-vendor patch week | Merges Microsoft/Fortinet/ConnectWise into one defensible order |
 | [10-internet-facing-asset-blast](demos/10-internet-facing-asset-blast/) | Asset/exposure-aware triage | Custom `asset`/`exposure` fields survive enrichment for the last-mile call |
+| [11-airgap-feeds-enrichment](demos/11-airgap-feeds-enrichment/) | Disconnected / air-gapped triage | `--feeds --offline` enriches from a sneakernet feed snapshot, zero network |
 
 Every demo is exercised by the test suite (`tests/test_demos.py`), so each one is guaranteed
 to still produce its documented finding.
@@ -209,8 +268,9 @@ The weights and KEV parameters live in `cveintel/scoring.py` (`W_CVSS`, `W_EPSS`
 - `--fail-on critical|high` CI/compliance gate (exit code `2`)
 - `--sarif` SARIF 2.1.0 export for GitHub code-scanning / dashboards
 - Fully offline by default; optional isolated `--live` fetch (NVD / CISA KEV / EPSS)
+- Edge / air-gap data-feed cache (`feeds` subcommand): keyless fetch -> disk cache -> offline re-serve, plus tar `snapshot-export`/`snapshot-import` for sneakernet; `rank/enrich/kev --feeds [--offline]`
 - Bundled example fixtures; bring-your-own via `--fixtures`
-- Ten real-use-case demos under `demos/`, each test-verified to fire
+- Eleven real-use-case demos under `demos/`, each test-verified to fire
 - Standard library only; real pytest suite; GitHub Actions CI
 
 ## Development

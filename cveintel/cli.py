@@ -4,6 +4,7 @@ Subcommands:
     rank    - ranked, explained priority list
     enrich  - merge KEV/EPSS/CVSS signals onto records
     kev     - filter to KEV-listed CVEs only
+    feeds   - manage the edge/air-gap data-feed cache (cisa-kev/epss/nvd-cve)
 
 Standard library only (argparse).
 """
@@ -78,6 +79,8 @@ def _load_and_enrich(args) -> list[dict]:
         fixtures_dir=fixtures,
         live=args.live,
         live_timeout=args.live_timeout,
+        feeds=getattr(args, "feeds", False),
+        offline=getattr(args, "offline", False),
     )
 
 
@@ -145,6 +148,62 @@ def cmd_kev(args) -> int:
     return EXIT_OK
 
 
+def cmd_feeds(args) -> int:
+    """Manage the edge/air-gap feed cache restricted to cveintel's feeds."""
+    from . import datafeeds, feeds as feeds_mod
+
+    action = args.feeds_action
+
+    if action == "list":
+        rows = feeds_mod.list_feeds()
+        if args.json:
+            for f in rows:
+                f["cached_age_hours"] = datafeeds.cached_age_hours(f["id"])
+            print(json.dumps(rows, indent=2))
+            return EXIT_OK
+        print(f"{'FEED':<12} {'DOMAIN':<7} {'CACHE':<12} SOURCE")
+        print("-" * 64)
+        for f in rows:
+            age = datafeeds.cached_age_hours(f["id"])
+            cache = "uncached" if age is None else f"{age:.1f}h old"
+            print(f"{f['id']:<12} {f.get('domain',''):<7} {cache:<12} {f['name']}")
+            print(f"             {f['url']}")
+        return EXIT_OK
+
+    if action == "update":
+        ids = args.ids or feeds_mod.RELEVANT_FEED_IDS
+        for fid in ids:
+            try:
+                pth = feeds_mod.update(fid)
+                print(f"  updated {fid} -> {pth} ({pth.stat().st_size} bytes)")
+            except (KeyError, ConnectionError) as e:
+                print(f"  {fid}: {e}", file=sys.stderr)
+                return EXIT_ERROR
+        return EXIT_OK
+
+    if action == "get":
+        try:
+            data = feeds_mod.get(args.id, offline=args.offline)
+        except (KeyError, FileNotFoundError, ConnectionError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return EXIT_ERROR
+        text = json.dumps(data, indent=2) if isinstance(data, (dict, list)) else str(data)
+        print(text[:4000])
+        return EXIT_OK
+
+    if action == "snapshot-export":
+        n = datafeeds.snapshot_export(args.path)
+        print(f"exported {n} feed(s) -> {args.path}")
+        return EXIT_OK
+
+    if action == "snapshot-import":
+        n = datafeeds.snapshot_import(args.path)
+        print(f"imported snapshot from {args.path} ({n} feed(s) now cached)")
+        return EXIT_OK
+
+    return EXIT_ERROR
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="cveintel",
@@ -176,6 +235,18 @@ def build_parser() -> argparse.ArgumentParser:
             default=20.0,
             help="per-request timeout in seconds for --live (default: 20)",
         )
+        sp.add_argument(
+            "--feeds",
+            action="store_true",
+            help="enrich from the edge/air-gap data-feed cache "
+            "(cisa-kev/epss/nvd-cve); refreshes from network unless --offline",
+        )
+        sp.add_argument(
+            "--offline",
+            action="store_true",
+            help="with --feeds, serve signals from the local feed cache only "
+            "(no network) - for air-gapped / disconnected operation",
+        )
         sp.add_argument("--json", action="store_true", help="emit JSON instead of a table")
         sp.add_argument(
             "--fail-on",
@@ -206,6 +277,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-reasons", action="store_true", help="hide per-CVE reason lines"
     )
     sp_kev.set_defaults(func=cmd_kev)
+
+    sp_feeds = sub.add_parser(
+        "feeds",
+        help="manage the edge/air-gap data-feed cache (cisa-kev/epss/nvd-cve)",
+    )
+    sp_feeds.add_argument("--json", action="store_true", help="emit JSON")
+    fsub = sp_feeds.add_subparsers(dest="feeds_action", required=True)
+    fsub.add_parser("list", help="list cveintel's feeds + cache freshness")
+    fu = fsub.add_parser("update", help="fetch + cache feeds (network)")
+    fu.add_argument(
+        "ids", nargs="*", help="feed ids (default: all of cisa-kev/epss/nvd-cve)"
+    )
+    fg = fsub.add_parser("get", help="print a cached/fetched feed")
+    fg.add_argument("id", help="feed id (cisa-kev/epss/nvd-cve)")
+    fg.add_argument(
+        "--offline", action="store_true", help="serve from cache only (no network)"
+    )
+    fe = fsub.add_parser(
+        "snapshot-export", help="tar the feed cache for air-gap sneakernet"
+    )
+    fe.add_argument("path", help="output .tar.gz path")
+    fi = fsub.add_parser(
+        "snapshot-import", help="rehydrate the feed cache from a snapshot"
+    )
+    fi.add_argument("path", help="input .tar.gz path")
+    sp_feeds.set_defaults(func=cmd_feeds)
 
     return p
 
