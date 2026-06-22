@@ -65,6 +65,18 @@ JSON for pipelines:
 cveintel rank examples/cves.json --json
 ```
 
+SARIF 2.1.0 for code-scanning dashboards (GitHub code-scanning, Azure DevOps, etc.):
+
+```bash
+cveintel rank examples/cves.json --sarif > cveintel.sarif
+```
+
+Each CVE becomes one SARIF `result` (CVE id as `ruleId`, NVD detail page as
+`helpUri`); the composite tier maps to the SARIF `level` (CRITICAL/HIGH →
+`error`, MED → `warning`, LOW → `note`) and the 0-100 composite score is carried
+as the SARIF `rank`, so an exploitation-aware ranking flows straight into any
+SARIF-aware viewer.
+
 ### Enrich
 
 Merge KEV/EPSS/CVSS signals onto bare CVE ids (or partial records):
@@ -128,6 +140,32 @@ Offline signals are read from a fixtures directory (default: bundled `examples/`
 
 Point at your own with `--fixtures path/to/dir`. The bundled example data is clearly-sample (placeholder vendors/products) and lets `rank`/`enrich`/`kev` run out of the box.
 
+## Demos
+
+The [`demos/`](demos/) directory holds ten self-contained, real-use-case scenarios. Each
+folder ships a `scan.json` in the tool's real input format, its own `kev.json` / `epss.json`
+/ `nvd.json` fixtures, and a `SCENARIO.md` that narrates where the data came from, the exact
+command to run, what to expect, and how to act on it. They are grounded in well-documented,
+publicly-known CVEs (Log4Shell, Citrix Bleed, MOVEit, ProxyShell, the Ivanti/Fortinet/
+ConnectWise edge bugs, etc.); CVSS base scores and KEV membership are the real published
+values, while EPSS figures are clearly-marked illustrative snapshots in the real feed shape.
+
+| Demo | Scenario | Teaches |
+| ---- | -------- | ------- |
+| [01-log4shell-incident](demos/01-log4shell-incident/) | Morning-after Log4j family triage | KEV escalates the two exploited Log4j bugs to CRITICAL; the DoS/config-only ones stay MED |
+| [02-edge-appliance-exposure](demos/02-edge-appliance-exposure/) | Internet-facing VPN/gateway CVEs | When everything is KEV-CRITICAL, the composite *ordering* is the deliverable |
+| [03-moveit-supply-chain](demos/03-moveit-supply-chain/) | MOVEit MFT vendor advisory | `enrich` preserves input CVSS, fills EPSS, and promotes KEV from the catalog |
+| [04-exchange-proxyshell](demos/04-exchange-proxyshell/) | ProxyLogon + ProxyShell chains | `{"cves":[...]}` + bare-list KEV fixture shapes; `kev` subcommand |
+| [05-ci-release-gate](demos/05-ci-release-gate/) | Block-the-build SCA gate | `--fail-on high` exits 2 on a KEV dep but ignores quiet high-CVSS noise |
+| [06-scanner-noise-deprioritize](demos/06-scanner-noise-deprioritize/) | Cutting through scanner noise | A CVSS 9.8 quiet bug correctly ranks *below* Log4Shell |
+| [07-monthly-kev-review](demos/07-monthly-kev-review/) | BOD 22-01 monthly review | `kev` extracts the due-date-bound shortlist from a mixed backlog |
+| [08-bare-cve-ids-baseline](demos/08-bare-cve-ids-baseline/) | Unenriched id list | Fails safe: 0.0 / "no signal", never fabricates severity |
+| [09-mixed-vendor-patch-tuesday](demos/09-mixed-vendor-patch-tuesday/) | Cross-vendor patch week | Merges Microsoft/Fortinet/ConnectWise into one defensible order |
+| [10-internet-facing-asset-blast](demos/10-internet-facing-asset-blast/) | Asset/exposure-aware triage | Custom `asset`/`exposure` fields survive enrichment for the last-mile call |
+
+Every demo is exercised by the test suite (`tests/test_demos.py`), so each one is guaranteed
+to still produce its documented finding.
+
 ## Scoring formula
 
 Three normalized inputs, each in `[0, 1]`:
@@ -169,8 +207,10 @@ The weights and KEV parameters live in `cveintel/scoring.py` (`W_CVSS`, `W_EPSS`
 - Composite CVSS + KEV + EPSS scoring with plain-language reasons
 - KEV escalation (gap-closing boost + HIGH floor)
 - `--fail-on critical|high` CI/compliance gate (exit code `2`)
+- `--sarif` SARIF 2.1.0 export for GitHub code-scanning / dashboards
 - Fully offline by default; optional isolated `--live` fetch (NVD / CISA KEV / EPSS)
 - Bundled example fixtures; bring-your-own via `--fixtures`
+- Ten real-use-case demos under `demos/`, each test-verified to fire
 - Standard library only; real pytest suite; GitHub Actions CI
 
 ## Development

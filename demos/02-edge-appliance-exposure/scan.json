@@ -1,0 +1,6 @@
+[
+  { "cve_id": "CVE-2023-4966", "description": "Citrix NetScaler ADC/Gateway sensitive information disclosure (Citrix Bleed) - session token theft" },
+  { "cve_id": "CVE-2024-21887", "description": "Ivanti Connect Secure command injection - unauthenticated RCE as root when chained" },
+  { "cve_id": "CVE-2023-46805", "description": "Ivanti Connect Secure authentication bypass" },
+  { "cve_id": "CVE-2018-13379", "description": "Fortinet FortiOS SSL VPN path traversal - pre-auth credential/system file disclosure" }
+]

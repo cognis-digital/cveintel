@@ -1,0 +1,9 @@
+{
+  "title": "CISA KEV subset - perimeter appliances (illustrative snapshot)",
+  "vulnerabilities": [
+    { "cveID": "CVE-2023-4966", "vendorProject": "Citrix", "product": "NetScaler ADC/Gateway", "shortDescription": "Citrix Bleed, exploited by ransomware affiliates" },
+    { "cveID": "CVE-2024-21887", "vendorProject": "Ivanti", "product": "Connect Secure", "shortDescription": "Command injection, actively exploited" },
+    { "cveID": "CVE-2023-46805", "vendorProject": "Ivanti", "product": "Connect Secure", "shortDescription": "Auth bypass, actively exploited" },
+    { "cveID": "CVE-2018-13379", "vendorProject": "Fortinet", "product": "FortiOS", "shortDescription": "SSL VPN path traversal, broadly exploited since 2019" }
+  ]
+}

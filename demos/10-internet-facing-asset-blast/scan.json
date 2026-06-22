@@ -1,0 +1,6 @@
+[
+  { "cve_id": "CVE-2024-1709", "asset": "vendor-portal-01 (DMZ, 0.0.0.0/0)", "exposure": "internet", "description": "ScreenConnect auth bypass on an internet-facing remote-support server" },
+  { "cve_id": "CVE-2023-4966", "asset": "vpn-gw-02 (perimeter)", "exposure": "internet", "description": "Citrix Bleed on the primary remote-access gateway" },
+  { "cve_id": "CVE-2021-44228", "asset": "billing-api (internal only)", "exposure": "internal", "description": "Log4Shell in an internal-only microservice, no inbound internet path" },
+  { "cve_id": "CVE-2022-0778", "asset": "build-runner-07 (internal CI)", "exposure": "internal", "description": "OpenSSL DoS on an internal build runner" }
+]

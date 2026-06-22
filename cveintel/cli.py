@@ -85,7 +85,11 @@ def cmd_rank(args) -> int:
     enriched = _load_and_enrich(args)
     scored = rank_records(enriched)
 
-    if args.json:
+    if getattr(args, "sarif", False):
+        from .sarif import to_sarif
+
+        print(json.dumps(to_sarif(scored), indent=2))
+    elif args.json:
         print(json.dumps([s.to_dict() for s in scored], indent=2))
     else:
         _print_table(scored, show_reasons=not args.no_reasons)
@@ -184,6 +188,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(sp_rank)
     sp_rank.add_argument(
         "--no-reasons", action="store_true", help="hide per-CVE reason lines"
+    )
+    sp_rank.add_argument(
+        "--sarif",
+        action="store_true",
+        help="emit a SARIF 2.1.0 log (for GitHub code-scanning / dashboards)",
     )
     sp_rank.set_defaults(func=cmd_rank)
 

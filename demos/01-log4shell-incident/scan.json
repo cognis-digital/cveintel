@@ -1,0 +1,18 @@
+[
+  {
+    "cve_id": "CVE-2021-44228",
+    "description": "Apache Log4j2 JNDI RCE (Log4Shell) - unauthenticated remote code execution via crafted log message"
+  },
+  {
+    "cve_id": "CVE-2021-45046",
+    "description": "Apache Log4j2 incomplete Log4Shell fix - RCE/DoS in certain non-default configurations"
+  },
+  {
+    "cve_id": "CVE-2021-45105",
+    "description": "Apache Log4j2 uncontrolled recursion self-referential lookup denial of service"
+  },
+  {
+    "cve_id": "CVE-2021-44832",
+    "description": "Apache Log4j2 RCE via JDBC Appender when attacker controls configuration"
+  }
+]

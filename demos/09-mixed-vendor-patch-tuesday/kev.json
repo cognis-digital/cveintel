@@ -1,0 +1,8 @@
+{
+  "title": "CISA KEV subset - mixed vendor patch cycle (illustrative snapshot)",
+  "vulnerabilities": [
+    { "cveID": "CVE-2024-21412", "vendorProject": "Microsoft", "product": "Windows SmartScreen", "shortDescription": "SmartScreen bypass, exploited by stealer campaigns" },
+    { "cveID": "CVE-2024-21762", "vendorProject": "Fortinet", "product": "FortiOS", "shortDescription": "SSL-VPN out-of-bounds write RCE, exploited" },
+    { "cveID": "CVE-2024-1709", "vendorProject": "ConnectWise", "product": "ScreenConnect", "shortDescription": "Auth bypass, exploited by ransomware affiliates" }
+  ]
+}

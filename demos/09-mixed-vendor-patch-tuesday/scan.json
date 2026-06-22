@@ -1,0 +1,7 @@
+[
+  { "cve_id": "CVE-2024-21412", "description": "Windows Internet Shortcut SmartScreen security feature bypass" },
+  { "cve_id": "CVE-2024-21351", "description": "Windows SmartScreen security feature bypass" },
+  { "cve_id": "CVE-2024-21413", "description": "Microsoft Outlook remote code execution (Moniker link)" },
+  { "cve_id": "CVE-2024-21762", "description": "Fortinet FortiOS SSL VPN out-of-bounds write - unauthenticated RCE" },
+  { "cve_id": "CVE-2024-1709", "description": "ConnectWise ScreenConnect authentication bypass" }
+]

@@ -1,0 +1,6 @@
+[
+  { "cve_id": "CVE-2021-3711", "description": "OpenSSL SM2 decryption buffer overflow - high CVSS, no broad in-the-wild exploitation" },
+  { "cve_id": "CVE-2022-0778", "description": "OpenSSL BN_mod_sqrt infinite loop DoS (cert parsing)" },
+  { "cve_id": "CVE-2021-44228", "description": "Apache Log4j2 JNDI RCE (Log4Shell) - included as the one true emergency for contrast" },
+  { "cve_id": "CVE-2023-0286", "description": "OpenSSL X.400 address type confusion (GENERAL_NAME_cmp)" }
+]

@@ -1,0 +1,6 @@
+[
+  { "cve_id": "CVE-2017-5638", "description": "Apache Struts 2 Jakarta Multipart parser RCE via crafted Content-Type (Equifax breach root cause)" },
+  { "cve_id": "CVE-2021-23337", "description": "lodash command injection via template" },
+  { "cve_id": "CVE-2022-37601", "description": "loader-utils prototype pollution" },
+  { "cve_id": "CVE-2020-8203", "description": "lodash prototype pollution in zipObjectDeep" }
+]

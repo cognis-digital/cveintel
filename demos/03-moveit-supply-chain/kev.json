@@ -1,0 +1,7 @@
+{
+  "title": "CISA KEV subset - MOVEit Transfer (illustrative snapshot)",
+  "vulnerabilities": [
+    { "cveID": "CVE-2023-34362", "vendorProject": "Progress", "product": "MOVEit Transfer", "shortDescription": "SQLi to RCE, Cl0p mass-exploitation" },
+    { "cveID": "CVE-2023-35708", "vendorProject": "Progress", "product": "MOVEit Transfer", "shortDescription": "SQLi, exploited" }
+  ]
+}

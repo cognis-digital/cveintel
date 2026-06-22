@@ -1,0 +1,5 @@
+[
+  { "cve_id": "CVE-2023-34362", "cvss": 9.8, "kev": true, "description": "Progress MOVEit Transfer SQL injection -> RCE (Cl0p zero-day, LEMURLOOT webshell)" },
+  { "cve_id": "CVE-2023-35036", "cvss": 9.1, "description": "Progress MOVEit Transfer additional SQL injection (follow-up advisory)" },
+  { "cve_id": "CVE-2023-35708", "cvss": 9.8, "description": "Progress MOVEit Transfer SQL injection (third advisory, June 2023)" }
+]

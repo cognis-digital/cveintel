@@ -1,0 +1,6 @@
+{
+  "title": "CISA KEV subset - build dependencies (illustrative snapshot)",
+  "vulnerabilities": [
+    { "cveID": "CVE-2017-5638", "vendorProject": "Apache", "product": "Struts 2", "shortDescription": "Jakarta Multipart RCE, broadly exploited" }
+  ]
+}
