@@ -1,0 +1,12 @@
+[
+  {"cve_id": "CVE-2023-4966",  "cvss": 7.5, "epss": 0.18, "kev": false,
+   "description": "Citrix NetScaler ADC/Gateway sensitive-info disclosure (Citrix Bleed)"},
+  {"cve_id": "CVE-2023-46805", "cvss": 8.2, "epss": 0.06, "kev": false,
+   "description": "Ivanti Connect Secure / Policy Secure authentication bypass"},
+  {"cve_id": "CVE-2024-21887", "cvss": 9.1, "epss": 0.09, "kev": false,
+   "description": "Ivanti Connect Secure / Policy Secure command injection"},
+  {"cve_id": "CVE-2023-34362", "cvss": 9.8, "epss": 0.91, "kev": true,
+   "description": "Progress MOVEit Transfer SQL injection (Cl0p mass-exploitation)"},
+  {"cve_id": "CVE-2024-3400",  "cvss": 10.0, "epss": 0.12, "kev": false,
+   "description": "Palo Alto PAN-OS GlobalProtect command injection"}
+]

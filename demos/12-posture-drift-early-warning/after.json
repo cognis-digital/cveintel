@@ -1,0 +1,12 @@
+[
+  {"cve_id": "CVE-2023-4966",  "cvss": 7.5, "epss": 0.94, "kev": true,
+   "description": "Citrix NetScaler ADC/Gateway sensitive-info disclosure (Citrix Bleed)"},
+  {"cve_id": "CVE-2023-46805", "cvss": 8.2, "epss": 0.70, "kev": true,
+   "description": "Ivanti Connect Secure / Policy Secure authentication bypass"},
+  {"cve_id": "CVE-2024-21887", "cvss": 9.1, "epss": 0.84, "kev": true,
+   "description": "Ivanti Connect Secure / Policy Secure command injection"},
+  {"cve_id": "CVE-2024-3400",  "cvss": 10.0, "epss": 0.93, "kev": true,
+   "description": "Palo Alto PAN-OS GlobalProtect command injection"},
+  {"cve_id": "CVE-2024-1709",  "cvss": 10.0, "epss": 0.95, "kev": true,
+   "description": "ConnectWise ScreenConnect authentication bypass"}
+]

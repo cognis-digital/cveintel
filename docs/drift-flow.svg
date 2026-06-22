@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="760" height="430" fill="#0d1117"/>
+  <text x="380" y="34" fill="#e6edf3" font-size="20" font-weight="700" text-anchor="middle">cveintel diff — posture-drift early warning</text>
+  <text x="380" y="56" fill="#7d8590" font-size="12" text-anchor="middle">two scored snapshots in, classified drift out — deterministic, offline</text>
+
+  <!-- snapshots -->
+  <rect x="40" y="90" width="160" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="120" y="120" fill="#e6edf3" font-size="14" font-weight="600" text-anchor="middle">BEFORE</text>
+  <text x="120" y="140" fill="#7d8590" font-size="11" text-anchor="middle">prior scan snapshot</text>
+
+  <rect x="40" y="200" width="160" height="70" rx="8" fill="#161b22" stroke="#30363d"/>
+  <text x="120" y="230" fill="#e6edf3" font-size="14" font-weight="600" text-anchor="middle">AFTER</text>
+  <text x="120" y="250" fill="#7d8590" font-size="11" text-anchor="middle">current scan snapshot</text>
+
+  <!-- score -->
+  <rect x="270" y="145" width="150" height="70" rx="8" fill="#1f2937" stroke="#30363d"/>
+  <text x="345" y="172" fill="#e6edf3" font-size="13" font-weight="600" text-anchor="middle">score each</text>
+  <text x="345" y="192" fill="#7d8590" font-size="11" text-anchor="middle">CVSS·KEV·EPSS</text>
+  <text x="345" y="207" fill="#7d8590" font-size="11" text-anchor="middle">→ tier</text>
+
+  <!-- classify -->
+  <rect x="490" y="145" width="150" height="70" rx="8" fill="#1f2937" stroke="#30363d"/>
+  <text x="565" y="172" fill="#e6edf3" font-size="13" font-weight="600" text-anchor="middle">classify drift</text>
+  <text x="565" y="192" fill="#7d8590" font-size="11" text-anchor="middle">per CVE,</text>
+  <text x="565" y="207" fill="#7d8590" font-size="11" text-anchor="middle">most-urgent first</text>
+
+  <!-- arrows -->
+  <line x1="200" y1="125" x2="270" y2="170" stroke="#484f58" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="200" y1="235" x2="270" y2="190" stroke="#484f58" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="420" y1="180" x2="490" y2="180" stroke="#484f58" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- outputs -->
+  <g>
+    <rect x="40" y="320" width="135" height="58" rx="6" fill="#3d1d1d" stroke="#f85149"/>
+    <text x="107" y="345" fill="#f85149" font-size="12" font-weight="700" text-anchor="middle">KEV+</text>
+    <text x="107" y="364" fill="#ffb4ab" font-size="10" text-anchor="middle">now exploited</text>
+
+    <rect x="190" y="320" width="135" height="58" rx="6" fill="#3d2e1d" stroke="#d29922"/>
+    <text x="257" y="345" fill="#d29922" font-size="12" font-weight="700" text-anchor="middle">TIER^ / EPSS^</text>
+    <text x="257" y="364" fill="#f0c77e" font-size="10" text-anchor="middle">escalating</text>
+
+    <rect x="340" y="320" width="135" height="58" rx="6" fill="#1d2e3d" stroke="#388bfd"/>
+    <text x="407" y="345" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">NEW</text>
+    <text x="407" y="364" fill="#a5d6ff" font-size="10" text-anchor="middle">in scope</text>
+
+    <rect x="490" y="320" width="135" height="58" rx="6" fill="#1d3d29" stroke="#3fb950"/>
+    <text x="557" y="345" fill="#3fb950" font-size="12" font-weight="700" text-anchor="middle">GONE</text>
+    <text x="557" y="364" fill="#7ee787" font-size="10" text-anchor="middle">remediated</text>
+
+    <rect x="640" y="320" width="80" height="58" rx="6" fill="#21262d" stroke="#30363d"/>
+    <text x="680" y="345" fill="#e6edf3" font-size="11" font-weight="700" text-anchor="middle">--fail-</text>
+    <text x="680" y="360" fill="#e6edf3" font-size="11" font-weight="700" text-anchor="middle">on-drift</text>
+  </g>
+  <line x1="565" y1="215" x2="380" y2="312" stroke="#484f58" stroke-width="2" marker-end="url(#a)"/>
+
+  <text x="380" y="408" fill="#7d8590" font-size="11" text-anchor="middle">Defensive / situational-awareness only — reports what got worse so a defender can re-prioritize.</text>
+
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#484f58"/>
+    </marker>
+  </defs>
+</svg>

@@ -4,6 +4,7 @@ Subcommands:
     rank    - ranked, explained priority list
     enrich  - merge KEV/EPSS/CVSS signals onto records
     kev     - filter to KEV-listed CVEs only
+    diff    - posture drift between two scan snapshots (early warning)
     feeds   - manage the edge/air-gap data-feed cache (cisa-kev/epss/nvd-cve)
 
 Standard library only (argparse).
@@ -148,6 +149,95 @@ def cmd_kev(args) -> int:
     return EXIT_OK
 
 
+_DRIFT_GLYPH = {
+    "kev_added": "KEV+",
+    "kev_removed": "KEV-",
+    "tier_up": "TIER^",
+    "tier_down": "tier_v",
+    "epss_spike": "EPSS^",
+    "epss_drop": "epss_v",
+    "cvss_up": "CVSS^",
+    "cvss_down": "cvss_v",
+    "appeared": "NEW",
+    "resolved": "GONE",
+}
+
+
+def _print_drift(items, summary, show_notes: bool = True) -> None:
+    if not items:
+        print("(no posture drift between snapshots)")
+        return
+
+    print(
+        f"{'CVE':<18} {'CHANGE':<24} {'WAS':>10}  {'NOW':>10}"
+    )
+    print("-" * 70)
+    for it in items:
+        kinds = ",".join(_DRIFT_GLYPH.get(k, k) for k in it.kinds)
+        was = "-" if not it.before else f"{it.before['tier']}/{it.before['score']:.0f}"
+        now = "-" if not it.after else f"{it.after['tier']}/{it.after['score']:.0f}"
+        flag = "!" if it.worsened else " "
+        print(f"{it.cve_id:<18} {kinds:<24} {was:>10}  {now:>10} {flag}")
+        if show_notes:
+            for n in it.notes:
+                print(f"    - {n}")
+
+    print(
+        f"\n{summary['total_changed']} changed "
+        f"({summary['worsened']} worsened): "
+        f"KEV+{summary['kev_added']} TIER^{summary['tier_up']} "
+        f"EPSS^{summary['epss_spike']} NEW{summary['appeared']} "
+        f"GONE{summary['resolved']}"
+    )
+
+
+def cmd_diff(args) -> int:
+    """Diff two scan snapshots and report (and optionally gate on) drift."""
+    from .drift import diff_records, summarize
+
+    fixtures = _resolve_fixtures(args.fixtures)
+
+    def _enrich(path):
+        from .enrich import enrich_records, load_cve_input
+
+        recs = load_cve_input(path)
+        return enrich_records(
+            recs,
+            fixtures_dir=fixtures,
+            live=args.live,
+            live_timeout=args.live_timeout,
+            feeds=getattr(args, "feeds", False),
+            offline=getattr(args, "offline", False),
+        )
+
+    before = _enrich(args.before)
+    after = _enrich(args.after)
+
+    items = diff_records(before, after, worsened_only=args.worsened_only)
+    summary = summarize(items)
+
+    if args.json:
+        print(
+            json.dumps(
+                {"summary": summary, "drift": [it.to_dict() for it in items]},
+                indent=2,
+            )
+        )
+    else:
+        _print_drift(items, summary, show_notes=not args.no_reasons)
+
+    # Gate: any worsened drift trips the gate when --fail-on-drift is set.
+    if args.fail_on_drift and summary["worsened"] > 0:
+        if not args.json:
+            print(
+                f"\nFAIL: {summary['worsened']} CVE(s) worsened since the "
+                f"prior snapshot",
+                file=sys.stderr,
+            )
+        return EXIT_GATE
+    return EXIT_OK
+
+
 def cmd_feeds(args) -> int:
     """Manage the edge/air-gap feed cache restricted to cveintel's feeds."""
     from . import datafeeds, feeds as feeds_mod
@@ -277,6 +367,49 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-reasons", action="store_true", help="hide per-CVE reason lines"
     )
     sp_kev.set_defaults(func=cmd_kev)
+
+    sp_diff = sub.add_parser(
+        "diff",
+        help="posture drift between two scan snapshots (KEV/tier/EPSS/CVSS)",
+    )
+    sp_diff.add_argument("before", help="prior snapshot CVE input JSON")
+    sp_diff.add_argument("after", help="current snapshot CVE input JSON")
+    sp_diff.add_argument(
+        "--fixtures",
+        default=None,
+        help="signal-source directory (kev.json/epss.json/nvd.json) for both "
+        "snapshots (default: bundled examples/)",
+    )
+    sp_diff.add_argument(
+        "--live", action="store_true", help="fetch signals live (network)"
+    )
+    sp_diff.add_argument("--live-timeout", type=float, default=20.0)
+    sp_diff.add_argument(
+        "--feeds",
+        action="store_true",
+        help="enrich both snapshots from the edge/air-gap feed cache",
+    )
+    sp_diff.add_argument(
+        "--offline",
+        action="store_true",
+        help="with --feeds, serve from local cache only (air-gapped)",
+    )
+    sp_diff.add_argument(
+        "--worsened-only",
+        action="store_true",
+        help="show only changes that make the posture worse",
+    )
+    sp_diff.add_argument(
+        "--no-reasons", action="store_true", help="hide per-CVE drift notes"
+    )
+    sp_diff.add_argument("--json", action="store_true", help="emit JSON")
+    sp_diff.add_argument(
+        "--fail-on-drift",
+        action="store_true",
+        help="exit non-zero (2) if any CVE worsened since the prior snapshot "
+        "(CI early-warning gate)",
+    )
+    sp_diff.set_defaults(func=cmd_diff)
 
     sp_feeds = sub.add_parser(
         "feeds",

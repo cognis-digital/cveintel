@@ -93,6 +93,46 @@ Show only CVEs on the CISA KEV catalog:
 cveintel kev examples/cves.json
 ```
 
+### Diff (posture drift / early warning)
+
+Compare two scan snapshots and surface only what **changed** — newly
+known-exploited CVEs (`KEV+`), tier escalations (`TIER^`), EPSS spikes
+(`EPSS^`), upward CVSS revisions (`CVSS^`), newly-appeared findings (`NEW`), and
+remediated/decommissioned ones (`GONE`). Unchanged CVEs are omitted; output is
+sorted most-urgent first. Deterministic and fully offline.
+
+```bash
+cveintel diff yesterday.json today.json
+```
+
+```
+CVE                CHANGE                          WAS         NOW
+----------------------------------------------------------------------
+CVE-2024-3400      KEV+,TIER^,EPSS^             MED/65  CRITICAL/99 !
+    - newly listed on CISA KEV - proven in-the-wild exploitation
+    - tier escalated MED -> CRITICAL
+    - EPSS spiked 0.12 -> 0.93 (+81 pts) - rising exploitation likelihood
+...
+6 changed (5 worsened): KEV+5 TIER^4 EPSS^4 NEW1 GONE1
+```
+
+`--worsened-only` keeps just the changes that make the posture worse, and
+`--fail-on-drift` exits non-zero (`2`) the moment any CVE worsens — wire it into
+a nightly job to get paged the night a dormant edge CVE goes hot, often *days*
+before it would surface in a manual KEV review:
+
+```bash
+cveintel diff yesterday.json today.json --worsened-only --fail-on-drift
+cveintel diff yesterday.json today.json --json          # {summary, drift} for dashboards
+cveintel diff yesterday.json today.json --feeds --offline   # air-gapped drift analysis
+```
+
+EPSS movement is often the **earliest** machine-readable signal that a
+vulnerability is being weaponized — `diff` is built to catch your attack surface
+moving through `EPSS rises → KEV-listed → mass exploitation` and page you on the
+transition rather than the steady state. Full write-up:
+[`docs/posture-drift.md`](docs/posture-drift.md).
+
 ### CI / compliance gate
 
 Exit non-zero (code `2`) if anything meets a tier — drop this in a pipeline to block a release on actively-exploited or critical findings:
@@ -200,7 +240,7 @@ Point at your own with `--fixtures path/to/dir`. The bundled example data is cle
 
 ## Demos
 
-The [`demos/`](demos/) directory holds eleven self-contained, real-use-case scenarios. Each
+The [`demos/`](demos/) directory holds twelve self-contained, real-use-case scenarios. Each
 folder ships a `scan.json` in the tool's real input format, its own `kev.json` / `epss.json`
 / `nvd.json` fixtures, and a `SCENARIO.md` that narrates where the data came from, the exact
 command to run, what to expect, and how to act on it. They are grounded in well-documented,
@@ -221,6 +261,7 @@ values, while EPSS figures are clearly-marked illustrative snapshots in the real
 | [09-mixed-vendor-patch-tuesday](demos/09-mixed-vendor-patch-tuesday/) | Cross-vendor patch week | Merges Microsoft/Fortinet/ConnectWise into one defensible order |
 | [10-internet-facing-asset-blast](demos/10-internet-facing-asset-blast/) | Asset/exposure-aware triage | Custom `asset`/`exposure` fields survive enrichment for the last-mile call |
 | [11-airgap-feeds-enrichment](demos/11-airgap-feeds-enrichment/) | Disconnected / air-gapped triage | `--feeds --offline` enriches from a sneakernet feed snapshot, zero network |
+| [12-posture-drift-early-warning](demos/12-posture-drift-early-warning/) | Night-over-night edge-fleet drift | `diff` catches five appliances flipping to KEV/CRITICAL + a decommission, and `--fail-on-drift` gates on it |
 
 Every demo is exercised by the test suite (`tests/test_demos.py`), so each one is guaranteed
 to still produce its documented finding.
@@ -262,16 +303,17 @@ The weights and KEV parameters live in `cveintel/scoring.py` (`W_CVSS`, `W_EPSS`
 
 ## Features
 
-- `rank` / `enrich` / `kev` subcommands, table or `--json` output
+- `rank` / `enrich` / `kev` / `diff` subcommands, table or `--json` output
 - Composite CVSS + KEV + EPSS scoring with plain-language reasons
 - KEV escalation (gap-closing boost + HIGH floor)
+- **Posture-drift early warning** (`diff`): classifies night-over-night change (KEV-added / tier-up / EPSS-spike / CVSS-up / appeared / resolved), `--worsened-only`, and a `--fail-on-drift` nightly gate — see [`docs/posture-drift.md`](docs/posture-drift.md)
 - `--fail-on critical|high` CI/compliance gate (exit code `2`)
 - `--sarif` SARIF 2.1.0 export for GitHub code-scanning / dashboards
 - Fully offline by default; optional isolated `--live` fetch (NVD / CISA KEV / EPSS)
-- Edge / air-gap data-feed cache (`feeds` subcommand): keyless fetch -> disk cache -> offline re-serve, plus tar `snapshot-export`/`snapshot-import` for sneakernet; `rank/enrich/kev --feeds [--offline]`
+- Edge / air-gap data-feed cache (`feeds` subcommand): keyless fetch -> disk cache -> offline re-serve, plus tar `snapshot-export`/`snapshot-import` for sneakernet; `rank/enrich/kev/diff --feeds [--offline]`
 - Bundled example fixtures; bring-your-own via `--fixtures`
-- Eleven real-use-case demos under `demos/`, each test-verified to fire
-- Standard library only; real pytest suite; GitHub Actions CI
+- Twelve real-use-case demos under `demos/`, each test-verified to fire
+- Standard library only; real pytest suite (135 tests); GitHub Actions CI
 
 ## Development
 

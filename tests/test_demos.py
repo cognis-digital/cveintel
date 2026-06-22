@@ -31,7 +31,13 @@ def test_all_demo_folders_have_required_files():
     assert len(folders) >= 8
     for f in folders:
         d = os.path.join(DEMOS, f)
-        assert os.path.exists(os.path.join(d, "scan.json")), f"{f} missing scan.json"
+        # A demo carries either a single-scan input (scan.json) or, for the
+        # posture-drift demo, a before/after pair.
+        has_scan = os.path.exists(os.path.join(d, "scan.json"))
+        has_pair = os.path.exists(os.path.join(d, "before.json")) and os.path.exists(
+            os.path.join(d, "after.json")
+        )
+        assert has_scan or has_pair, f"{f} missing scan.json (or before/after pair)"
         assert os.path.exists(os.path.join(d, "SCENARIO.md")), f"{f} missing SCENARIO.md"
 
 
@@ -103,6 +109,49 @@ def test_demo03_kev_promotion_and_input_cvss_preserved(capsys):
     assert by_id["CVE-2023-35708"]["kev"] is True
     # ...but the non-KEV follow-up stays false
     assert by_id["CVE-2023-35036"]["kev"] is False
+
+
+def test_demo12_posture_drift_reports_kev_escalations(capsys):
+    d = os.path.join(DEMOS, "12-posture-drift-early-warning")
+    rc = main(
+        [
+            "diff",
+            os.path.join(d, "before.json"),
+            os.path.join(d, "after.json"),
+            "--fixtures",
+            d,
+            "--json",
+        ]
+    )
+    assert rc == EXIT_OK
+    data = _load(capsys)
+    summary = data["summary"]
+    # five edge appliances newly KEV-listed; one decommissioned (MOVEit).
+    assert summary["kev_added"] == 5
+    assert summary["resolved"] == 1
+    assert summary["appeared"] == 1  # ScreenConnect newly in scope
+    drift = {x["cve_id"]: x for x in data["drift"]}
+    # Citrix Bleed flipped MED -> CRITICAL with KEV + EPSS spike.
+    citrix = drift["CVE-2023-4966"]
+    assert {"kev_added", "tier_up", "epss_spike"} <= set(citrix["kinds"])
+    # MOVEit dropped out of scope.
+    assert drift["CVE-2023-34362"]["kinds"] == ["resolved"]
+
+
+def test_demo12_drift_gate_trips(capsys):
+    d = os.path.join(DEMOS, "12-posture-drift-early-warning")
+    rc = main(
+        [
+            "diff",
+            os.path.join(d, "before.json"),
+            os.path.join(d, "after.json"),
+            "--fixtures",
+            d,
+            "--worsened-only",
+            "--fail-on-drift",
+        ]
+    )
+    assert rc == EXIT_GATE
 
 
 def test_demo10_asset_metadata_survives_enrichment(capsys):
