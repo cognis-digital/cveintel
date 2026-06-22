@@ -27,6 +27,17 @@ jobs:
         run: |
           cveintel rank examples/cves.json
           cveintel kev examples/cves.json --json
+      - name: Smoke test passive SBOM scan (offline corpus)
+        run: |
+          cveintel sbom examples/sbom.json --json
+      - name: Smoke test active mode refuses without authorization
+        run: |
+          # Must refuse (no --authorized / no allowlist) and exit non-zero.
+          if cveintel active http://localhost/ ; then
+            echo "active mode ran without authorization - FAIL"; exit 1
+          else
+            echo "active mode correctly refused"
+          fi
       - name: Smoke test air-gap feeds (offline, no network)
         env:
           COGNIS_FEEDS_CACHE: tests/fixtures/feeds-cache

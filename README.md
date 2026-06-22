@@ -152,6 +152,94 @@ cveintel rank scan.json --live --live-timeout 30
 
 The network layer is isolated in `cveintel/live.py` and is never used in the offline path or the test suite.
 
+## Passive vs Active
+
+cveintel has two operating modes. **Passive is the default and is what you
+almost always want.**
+
+| | Passive (default) | Active (authorization-gated) |
+| --- | --- | --- |
+| Network | None — reads only what you give it + the bundled offline corpus | Read-only HTTP(S) to *consented, in-scope* hosts |
+| What it does | Enrich/rank CVEs, scan an SBOM against ~262k known vulns | Read response headers, map disclosed banners to CVEs |
+| Enabled by | always on | `--authorized` **and** `--target-allowlist` **and** `--rate-limit` |
+| Sends exploits? | n/a | **No.** Never. Read-only banner check only. |
+
+### Passive: SBOM scan (offline corpus)
+
+cveintel bundles `cveintel/cognis_vulndb.jsonl.gz` — a ~262k-record offline
+vulnerability corpus (OSV across PyPI/npm/Go/Maven/RubyGems/crates.io/NuGet).
+The `sbom` subcommand matches a software bill of materials against it with **no
+network**, computing CVSS base scores directly from the CVSS vector strings in
+the corpus so findings are ranked, not just listed:
+
+```bash
+cveintel sbom examples/sbom.json                 # CycloneDX, SPDX-ish, or a plain name list
+cveintel sbom requirements.txt --json
+cveintel sbom sbom.json --sarif > findings.sarif
+cveintel sbom sbom.json --fail-on high           # CI gate on the offline corpus
+```
+
+Accepts a JSON list of package names, a list of `{name, ecosystem}` objects,
+CycloneDX (`components`/`purl`), an SPDX-ish `packages` list, or a
+newline-delimited text file. Findings de-duplicate on CVE id (highest severity
+wins) and flow through the same scoring/SARIF/`--fail-on` machinery as `rank`.
+
+You can also fold the bundled corpus into ordinary enrichment to **fill missing
+CVSS** offline (non-destructive — never overrides authoritative input):
+
+```bash
+cveintel rank scan.json --vulndb        # backfill CVSS from the offline corpus
+```
+
+### Active mode — AUTHORIZED USE ONLY
+
+> **WARNING.** Active mode contacts a remote host over the network. Run it
+> **only** against systems you own or have **explicit written permission** to
+> test. Unauthorized scanning may be illegal. cveintel deliberately performs
+> only the most benign interaction possible — a single read-only HTTP(S) request
+> to read response headers (`Server:`, `X-Powered-By:`) and map any disclosed
+> product/version banners to known CVEs. It sends **no** exploit payloads, **no**
+> auth attacks, **no** fuzzing, and **no** port sweeps.
+
+Active mode is **off by default** and refuses to run unless **all** of the
+following are supplied:
+
+1. `--authorized` — you affirm you have written authorization.
+2. `--target-allowlist HOST` (repeatable; supports `*.example.com`) — the scope.
+   Any target whose host is not in the allowlist is **refused, never probed**.
+3. `--rate-limit` > 0 — requests/second; a minimum inter-request delay is enforced.
+
+```bash
+# Probe a consented host you own; banners map to corpus CVEs.
+cveintel active https://staging.example.com/ \
+    --authorized \
+    --target-allowlist '*.example.com' \
+    --rate-limit 2 \
+    --json
+```
+
+A loud authorized-use banner is always printed to stderr. Out-of-scope targets
+in a multi-target run are skipped (and recorded) rather than probed. The active
+code path is isolated in `cveintel/active.py`; its tests run only against
+`localhost` / a fixture HTTP server / mocks — never a real external host.
+
+## Language ports
+
+The core scoring model (CVSS + EPSS + CISA KEV → 0-100 score + tier) is ported
+to three other languages under [`ports/`](ports/), each with its own tests and a
+CI workflow ([`.github/workflows/ports.yml`](.github/workflows/ports.yml)) that
+builds and tests them on GitHub runners:
+
+| Language | Path | Run tests |
+| --- | --- | --- |
+| Go | [`ports/go`](ports/go) | `cd ports/go && go test ./...` |
+| Rust | [`ports/rust`](ports/rust) | `cd ports/rust && cargo test` |
+| TypeScript | [`ports/ts`](ports/ts) | `cd ports/ts && node --test --experimental-strip-types` |
+
+All ports reproduce the same KEV floor (70), KEV escalation, weights
+(`W_CVSS=0.6`, `W_EPSS=0.4`), and tier thresholds as the Python reference, so a
+finding scores identically in any of them.
+
 ## Data feeds (edge / air-gap deployable)
 
 For disconnected, edge, or air-gapped operation, cveintel ships a small,
@@ -303,7 +391,11 @@ The weights and KEV parameters live in `cveintel/scoring.py` (`W_CVSS`, `W_EPSS`
 
 ## Features
 
-- `rank` / `enrich` / `kev` / `diff` subcommands, table or `--json` output
+- `rank` / `enrich` / `kev` / `diff` / `sbom` / `active` subcommands, table or `--json` output
+- **Passive SBOM scan** (`sbom`): match a CycloneDX/SPDX/name-list bill of materials against the bundled ~262k-vuln offline corpus, fully offline; CVSS computed from corpus vectors
+- **Active mode** (`active`): authorization-gated, read-only banner/header probe of consented in-scope hosts — off by default, requires `--authorized` + `--target-allowlist` + `--rate-limit`, sends no exploits
+- `--vulndb` flag on `rank`/`enrich`/`kev`/`diff`: passively backfill missing CVSS from the offline corpus
+- Polyglot ports of the core scoring model in **Go / Rust / TypeScript** under `ports/`, each CI-built
 - Composite CVSS + KEV + EPSS scoring with plain-language reasons
 - KEV escalation (gap-closing boost + HIGH floor)
 - **Posture-drift early warning** (`diff`): classifies night-over-night change (KEV-added / tier-up / EPSS-spike / CVSS-up / appeared / resolved), `--worsened-only`, and a `--fail-on-drift` nightly gate — see [`docs/posture-drift.md`](docs/posture-drift.md)
@@ -313,7 +405,7 @@ The weights and KEV parameters live in `cveintel/scoring.py` (`W_CVSS`, `W_EPSS`
 - Edge / air-gap data-feed cache (`feeds` subcommand): keyless fetch -> disk cache -> offline re-serve, plus tar `snapshot-export`/`snapshot-import` for sneakernet; `rank/enrich/kev/diff --feeds [--offline]`
 - Bundled example fixtures; bring-your-own via `--fixtures`
 - Twelve real-use-case demos under `demos/`, each test-verified to fire
-- Standard library only; real pytest suite (135 tests); GitHub Actions CI
+- Standard library only; real pytest suite (230+ tests, fully offline); GitHub Actions CI for the Python core and for the Go/Rust/TypeScript ports
 
 ## Development
 

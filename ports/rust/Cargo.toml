@@ -1,0 +1,10 @@
+[package]
+name = "cveintel"
+version = "0.1.0"
+edition = "2021"
+description = "Core cveintel CVE priority-scoring model (CVSS + EPSS + CISA KEV). Defensive / authorized-use only."
+license = "LicenseRef-COCL-1.0"
+
+[lib]
+name = "cveintel"
+path = "src/lib.rs"

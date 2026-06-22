@@ -127,6 +127,7 @@ def enrich_records(
     live_timeout: float = 20.0,
     feeds: bool = False,
     offline: bool = False,
+    vulndb: bool = False,
 ) -> list[dict]:
     """Merge CVSS / KEV / EPSS signals onto a list of CVE records.
 
@@ -175,6 +176,14 @@ def enrich_records(
             out["kev"] = bool(out["kev"]) or (cid in kev_set)
 
         enriched.append(out)
+
+    if vulndb:
+        # Passive, offline fill from the bundled corpus (fills missing CVSS,
+        # adds vulndb_match/vulndb_summary). Never overrides existing values.
+        from .vulnmatch import enrich_from_vulndb
+
+        enriched = enrich_from_vulndb(enriched)
+
     return enriched
 
 

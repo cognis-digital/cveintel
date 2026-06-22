@@ -1,0 +1,10 @@
+{
+  "name": "@cognis-digital/cveintel-core",
+  "version": "0.1.0",
+  "description": "Core cveintel CVE priority-scoring model (CVSS + EPSS + CISA KEV). Defensive / authorized-use only.",
+  "type": "module",
+  "license": "LicenseRef-COCL-1.0",
+  "scripts": {
+    "test": "node --test --experimental-strip-types"
+  }
+}

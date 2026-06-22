@@ -33,7 +33,7 @@ dev = ["pytest>=7"]
 packages = ["cveintel"]
 
 [tool.setuptools.package-data]
-cveintel = ["data_feeds_2026.json"]
+cveintel = ["data_feeds_2026.json", "cognis_vulndb.jsonl.gz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

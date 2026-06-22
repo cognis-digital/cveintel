@@ -1,0 +1,10 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "components": [
+    { "name": "tar", "type": "library" },
+    { "name": "deno", "type": "application" },
+    { "name": "wasmtime", "type": "library" },
+    { "purl": "pkg:cargo/sequoia-openpgp@1.0.0" }
+  ]
+}

@@ -82,6 +82,7 @@ def _load_and_enrich(args) -> list[dict]:
         live_timeout=args.live_timeout,
         feeds=getattr(args, "feeds", False),
         offline=getattr(args, "offline", False),
+        vulndb=getattr(args, "vulndb", False),
     )
 
 
@@ -294,6 +295,99 @@ def cmd_feeds(args) -> int:
     return EXIT_ERROR
 
 
+def cmd_sbom(args) -> int:
+    """PASSIVE: match an SBOM / package list to CVEs in the offline corpus.
+
+    No network. Reads only the provided SBOM and the bundled vuln DB.
+    """
+    from .vulnmatch import load_sbom, scan_sbom
+
+    packages = load_sbom(args.input)
+    records = scan_sbom(packages, ecosystem_strict=args.ecosystem_strict)
+    scored = rank_records(records)
+
+    if getattr(args, "sarif", False):
+        from .sarif import to_sarif
+
+        print(json.dumps(to_sarif(scored), indent=2))
+    elif args.json:
+        print(json.dumps([s.to_dict() for s in scored], indent=2))
+    else:
+        print(
+            f"SBOM passive scan: {len(packages)} package(s) -> "
+            f"{len(scored)} CVE(s) (offline corpus)"
+        )
+        _print_table(scored, show_reasons=not args.no_reasons)
+
+    if _gate_triggered(scored, args.fail_on):
+        if not args.json:
+            print(
+                f"\nFAIL: at least one CVE meets --fail-on {args.fail_on.upper()}",
+                file=sys.stderr,
+            )
+        return EXIT_GATE
+    return EXIT_OK
+
+
+def cmd_active(args) -> int:
+    """ACTIVE (authorization-gated): read-only banner/header probe.
+
+    AUTHORIZED USE ONLY. Off by default; requires --authorized, a non-empty
+    --target-allowlist, and a positive --rate-limit. Out-of-scope targets are
+    refused. Sends no exploits - only reads response headers and maps disclosed
+    banners to the offline corpus.
+    """
+    from .active import AUTHORIZED_USE_BANNER, ActiveProbe, ScopeError
+
+    print(AUTHORIZED_USE_BANNER, file=sys.stderr)
+
+    try:
+        probe = ActiveProbe(
+            allowlist=args.target_allowlist or [],
+            authorized=args.authorized,
+            rate_limit=args.rate_limit,
+            timeout=args.timeout,
+        )
+    except (PermissionError, ScopeError, ValueError) as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+
+    results, findings = probe.scan(args.targets, skip_out_of_scope=True)
+    scored = rank_records(findings)
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "probes": [r.to_dict() for r in results],
+                    "findings": [s.to_dict() for s in scored],
+                },
+                indent=2,
+            )
+        )
+    else:
+        for r in results:
+            if r.error:
+                print(f"{r.target}: {r.error}")
+            else:
+                print(f"{r.target}: HTTP {r.status}; banners: {r.banners or '-'}")
+        print()
+        print(
+            f"Active probe: {len(results)} target(s) -> "
+            f"{len(scored)} CVE finding(s) from disclosed banners"
+        )
+        _print_table(scored, show_reasons=not args.no_reasons)
+
+    if _gate_triggered(scored, args.fail_on):
+        if not args.json:
+            print(
+                f"\nFAIL: at least one CVE meets --fail-on {args.fail_on.upper()}",
+                file=sys.stderr,
+            )
+        return EXIT_GATE
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="cveintel",
@@ -336,6 +430,12 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="with --feeds, serve signals from the local feed cache only "
             "(no network) - for air-gapped / disconnected operation",
+        )
+        sp.add_argument(
+            "--vulndb",
+            action="store_true",
+            help="passively fill missing CVSS from the bundled offline vuln DB "
+            "(~262k records; no network)",
         )
         sp.add_argument("--json", action="store_true", help="emit JSON instead of a table")
         sp.add_argument(
@@ -436,6 +536,77 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fi.add_argument("path", help="input .tar.gz path")
     sp_feeds.set_defaults(func=cmd_feeds)
+
+    # PASSIVE: SBOM / package-list scan against the bundled offline corpus.
+    sp_sbom = sub.add_parser(
+        "sbom",
+        help="PASSIVE: match an SBOM/package list to CVEs (offline corpus, no network)",
+    )
+    sp_sbom.add_argument(
+        "input",
+        help="SBOM path (JSON list of names, CycloneDX, or newline-delimited names)",
+    )
+    sp_sbom.add_argument(
+        "--ecosystem-strict",
+        action="store_true",
+        help="only match within the package's declared ecosystem",
+    )
+    sp_sbom.add_argument(
+        "--no-reasons", action="store_true", help="hide per-CVE reason lines"
+    )
+    sp_sbom.add_argument(
+        "--sarif", action="store_true", help="emit a SARIF 2.1.0 log"
+    )
+    sp_sbom.add_argument("--json", action="store_true", help="emit JSON")
+    sp_sbom.add_argument(
+        "--fail-on",
+        choices=["critical", "high"],
+        default=None,
+        help="exit non-zero (2) if any CVE meets this tier (CI gate)",
+    )
+    sp_sbom.set_defaults(func=cmd_sbom)
+
+    # ACTIVE: authorization-gated, read-only banner probe (OFF by default).
+    sp_active = sub.add_parser(
+        "active",
+        help="ACTIVE (AUTHORIZED USE ONLY): read-only banner/header probe of "
+        "consented, in-scope targets; OFF by default",
+    )
+    sp_active.add_argument("targets", nargs="+", help="target URL(s) to probe")
+    sp_active.add_argument(
+        "--authorized",
+        action="store_true",
+        help="REQUIRED. Affirm you have explicit written authorization to "
+        "test these targets. Without it, active mode refuses to run.",
+    )
+    sp_active.add_argument(
+        "--target-allowlist",
+        action="append",
+        default=[],
+        metavar="HOST",
+        help="REQUIRED. In-scope host (repeatable). Supports *.example.com. "
+        "Targets whose host is not listed are refused, never probed.",
+    )
+    sp_active.add_argument(
+        "--rate-limit",
+        type=float,
+        default=1.0,
+        help="max requests/second (must be > 0; default 1.0)",
+    )
+    sp_active.add_argument(
+        "--timeout", type=float, default=10.0, help="per-request timeout (s)"
+    )
+    sp_active.add_argument(
+        "--no-reasons", action="store_true", help="hide per-CVE reason lines"
+    )
+    sp_active.add_argument("--json", action="store_true", help="emit JSON")
+    sp_active.add_argument(
+        "--fail-on",
+        choices=["critical", "high"],
+        default=None,
+        help="exit non-zero (2) if any CVE meets this tier (CI gate)",
+    )
+    sp_active.set_defaults(func=cmd_active)
 
     return p
 
