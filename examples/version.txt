@@ -1,0 +1,3 @@
+$ cveintel --version
+
+cveintel 0.1.0

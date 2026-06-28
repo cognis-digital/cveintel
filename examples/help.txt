@@ -1,0 +1,24 @@
+$ cveintel --help
+
+usage: cveintel [-h] [--version] {rank,enrich,kev,diff,feeds,sbom,active} ...
+
+Correlate CVSS, CISA KEV, and EPSS into an explained CVE priority ranking.
+Offline by default.
+
+positional arguments:
+  {rank,enrich,kev,diff,feeds,sbom,active}
+    rank                ranked, explained priority list
+    enrich              merge KEV/EPSS/CVSS onto records
+    kev                 filter to KEV-listed CVEs only
+    diff                posture drift between two scan snapshots
+                        (KEV/tier/EPSS/CVSS)
+    feeds               manage the edge/air-gap data-feed cache (cisa-
+                        kev/epss/nvd-cve)
+    sbom                PASSIVE: match an SBOM/package list to CVEs (offline
+                        corpus, no network)
+    active              ACTIVE (AUTHORIZED USE ONLY): read-only banner/header
+                        probe of consented, in-scope targets; OFF by default
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

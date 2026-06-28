@@ -2,6 +2,66 @@
 
 **CVE enrichment + prioritization CLI** — correlate base severity (CVSS), known-exploited status (CISA KEV), and exploitation probability (EPSS) into a single explained "patch these first, here's why" ranking. Works fully offline on fixture JSON; optionally fetches live data.
 
+
+<!-- cognis:example:start -->
+## 🔎 Example output
+
+Real, reproducible output from the tool — runs offline:
+
+```console
+$ cveintel --version
+cveintel 0.1.0
+```
+
+```console
+$ cveintel --help
+usage: cveintel [-h] [--version] {rank,enrich,kev,diff,feeds,sbom,active} ...
+
+Correlate CVSS, CISA KEV, and EPSS into an explained CVE priority ranking.
+Offline by default.
+
+positional arguments:
+  {rank,enrich,kev,diff,feeds,sbom,active}
+    rank                ranked, explained priority list
+    enrich              merge KEV/EPSS/CVSS onto records
+    kev                 filter to KEV-listed CVEs only
+    diff                posture drift between two scan snapshots
+                        (KEV/tier/EPSS/CVSS)
+    feeds               manage the edge/air-gap data-feed cache (cisa-
+                        kev/epss/nvd-cve)
+    sbom                PASSIVE: match an SBOM/package list to CVEs (offline
+                        corpus, no network)
+    active              ACTIVE (AUTHORIZED USE ONLY): read-only banner/header
+                        probe of consented, in-scope targets; OFF by default
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+```
+
+> Blocks above are real `cveintel` output — reproduce them from a clone.
+
+**Sample result format** _(illustrative values — run on your own data for real findings):_
+
+```
+{
+"rank": [
+  {
+    "cve_id": "CVE-2022-1234",
+    "priority": "High",
+    "reason": "CVSS score: 9.8, EPSS rating: Critical"
+  },
+  {
+    "cve_id": "CVE-2023-5678",
+    "priority": "Medium",
+    "reason": "CVSS score: 5.5, KEV tier: Yellow"
+  }
+]
+}
+```
+
+<!-- cognis:example:end -->
+
 ## Why
 
 CVSS alone over-ranks vulnerabilities that nobody is actually exploiting. `cveintel` fuses three independent signals so your triage reflects *real-world* urgency:
